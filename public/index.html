@@ -226,8 +226,10 @@
     color: #CBD5E1;
     white-space: nowrap;
   }
+  .move-tag.black { color: #fff; border-color: #475569; }
+  .move-tag.white { color: #E2E8F0; background: #1E293B; border-color: #334155; }
 
-  .footer { max-width: 600px; margin: 18px auto 0; text-align: center; font-size: 12px; color: #64748B; }
+  .footer { max-width: 420px; margin: 18px auto 0; text-align: center; font-size: 12px; color: #64748B; }
   .footer a { color: #7dd3fc; text-decoration: none; }
   .footer a:hover { text-decoration: underline; }
 
@@ -244,7 +246,7 @@
   .conn.error      { color: #FCA5A5; background: rgba(220,38,38,0.1); border: 1px solid rgba(220,38,38,0.3); }
 
   /* 弹窗 */
-  .modal-bg {
+  .modal {
     position: fixed; inset: 0;
     background-color: rgba(0,0,0,0.7);
     display: flex; align-items: center; justify-content: center;
@@ -293,10 +295,11 @@
   <div v-else>
     <!-- 状态卡：双方计时器 -->
     <div class="card status-card">
-      <div v-if="winner" class="status-banner">
-        {{ winner===myColor ? '🏆 你赢了！' : '💔 你输了 · ' + (winner===1?'黑方':'白方') + ' 获胜' }}
+      <div v-if="winner || isDraw" class="status-banner" :class="{draw: isDraw}">
+        {{ winner
+          ? (winner===myColor ? '🏆 你赢了！' : '💔 你输了 · ' + (winner===1?'黑方':'白方') + ' 获胜')
+          : '🤝 平局' }}
       </div>
-      <div v-else-if="isDraw" class="status-banner draw">🤝 平局</div>
       <div class="panes">
         <div class="player-pane" :class="{active: currentPlayer===1 && !finished}">
           <span class="dot black"></span>
@@ -358,7 +361,8 @@
       <div class="history-title">落子记录 ({{ moves.length }})</div>
       <div class="history-list">
         <span v-if="moves.length===0" style="font-size:12px;color:#64748B;">暂无</span>
-        <span v-for="(m,i) in moves" :key="i" class="move-tag">
+        <span v-for="(m,i) in moves" :key="i"
+              class="move-tag" :class="m.player===1?'black':'white'">
           {{ i+1 }}. {{ m.player===1?'黑':'白' }} {{ m.x }},{{ m.y }}
         </span>
       </div>
@@ -370,7 +374,7 @@
   </div>
 
   <!-- 弹窗 -->
-  <div v-if="modal" class="modal-bg" @click.self="modal=null">
+  <div v-if="modal" class="modal" @click.self="modal=null">
     <div class="modal-card">
       <h2>{{ modal.title }}</h2>
       <p>{{ modal.text }}</p>
@@ -425,6 +429,17 @@ createApp({
     const shareUrl = computed(() => location.origin + location.pathname + '#' + roomId.value);
 
     let ws = null;
+
+    // 平滑计时：DO alarm 限制 1 秒最低，客户端用 100ms 推算显示精度
+    // tickBase* 是上一次服务端广播时的状态，tickerBaseTime 是同步时刻
+    let smoothTickId = null;
+    let tickBaseBlack = 0, tickBaseWhite = 0, tickBaseTime = 0;
+
+    function updateTickBase(black, white) {
+      tickBaseBlack = black;
+      tickBaseWhite = white;
+      tickBaseTime = Date.now();
+    }
 
     function showModal(title, text, action) {
       modal.value = { title, text, action };
@@ -482,12 +497,14 @@ createApp({
           gameOver.value      = msg.gameOver;
           winner.value        = msg.winner;
           winLine.value       = msg.winLine;
+          updateTickBase(msg.blackTime, msg.whiteTime);
           break;
         case 'move':
           moves.value.push({ x: msg.x, y: msg.y, player: msg.player });
           blackTime.value     = msg.blackTime;
           whiteTime.value     = msg.whiteTime;
           currentPlayer.value = msg.color;
+          updateTickBase(msg.blackTime, msg.whiteTime);
           if (msg.gameOver) {
             gameOver.value = true;
             winner.value   = msg.winner;
@@ -504,6 +521,7 @@ createApp({
         case 'tick':
           blackTime.value = msg.blackTime;
           whiteTime.value = msg.whiteTime;
+          updateTickBase(msg.blackTime, msg.whiteTime);
           break;
         case 'restart':
           moves.value         = [];
@@ -513,6 +531,7 @@ createApp({
           winner.value        = 0;
           winLine.value       = null;
           gameOver.value      = false;
+          updateTickBase(0, 0);
           break;
         case 'opponent_left':
           showModal('对手已离开', '你可以继续等待或退出房间');
@@ -596,7 +615,18 @@ createApp({
       setTimeout(() => joinRoom(), 100);
     }
 
-    onUnmounted(() => { if (ws) try { ws.close(); } catch {} });
+    // 100ms 平滑计时 ticker（一直跑，finished 时不更新即可）
+    smoothTickId = setInterval(() => {
+      if (finished.value || !tickBaseTime) return;
+      const dt = Date.now() - tickBaseTime;
+      if (currentPlayer.value === 1) blackTime.value = tickBaseBlack + dt;
+      else whiteTime.value = tickBaseWhite + dt;
+    }, 100);
+
+    onUnmounted(() => {
+      if (smoothTickId) clearInterval(smoothTickId);
+      if (ws) try { ws.close(); } catch {}
+    });
 
     return {
       mode, joinCode, roomId, myColor, moves, currentPlayer,
