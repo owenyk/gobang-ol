@@ -9,4 +9,4 @@ pages_build_output_dir = "./public"
 [[durable_objects.bindings]]
 name = "GOBANG_ROOM"
 class_name = "GobangRoom"
-script_name = "gobang-room-worker"
+script_name = "gobang-ol"
