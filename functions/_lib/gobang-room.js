@@ -1,11 +1,9 @@
-// Cloudflare Worker: GobangRoom Durable Object 持有者
+// Cloudflare Pages Function: GobangRoom Durable Object
 //
-// 这个 Worker 的唯一作用是持有 GobangRoom class，
-// Pages 项目通过 wrangler.toml 里的 script_name 引用这个 Worker 来使用 DO。
+// 房间状态由 Durable Object "GobangRoom" 维护（每房间一个实例），
+// 协议见文件顶部注释。Pages 项目通过 wrangler.toml 里的
+// [[durable_objects.bindings]] name = "GOBANG_ROOM" 暴露给路由层使用。
 //
-// 重要：Cloudflare 要求 DO class 必须直接从主入口 export（不能用 re-export），
-// 否则 "Cannot create binding for class 'X' that is not exported by script 'Y'"。
-
 // 协议：JSON 文本消息
 //
 // 客户端 → 服务端:
@@ -56,7 +54,7 @@ export class GobangRoom {
     });
   }
 
-  // 处理 HTTP/WS 请求（Pages Function 转发过来）
+  // 处理 HTTP/WS 请求（路由层转发过来）
   async fetch(request) {
     if (request.headers.get('Upgrade') !== 'websocket') {
       return new Response('Expected WebSocket', { status: 400 });
@@ -282,11 +280,3 @@ export class GobangRoom {
     });
   }
 }
-
-// 一个最小的 fetch handler（Worker 需要 default export），
-// 实际业务由 Durable Object 处理，这个 handler 永远不会被调用。
-export default {
-  async fetch() {
-    return new Response('GobangRoom DO worker', { status: 200 });
-  }
-};
