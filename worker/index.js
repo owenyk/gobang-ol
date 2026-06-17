@@ -40,6 +40,7 @@ export class GobangRoom {
     this.winner = 0;
     this.winLine = null;
     this.restored = false;
+    this.chatHistory = [];        // { sender: 1|2, name, text, time }（replay 不清）
 
     // 启动时恢复 + 设置定时器
     state.blockConcurrencyWhile(async () => {
@@ -123,7 +124,8 @@ export class GobangRoom {
           whiteTime: this.whiteTime,
           gameOver: this.gameOver,
           winner: this.winner,
-          winLine: this.winLine
+          winLine: this.winLine,
+          chatHistory: this.chatHistory
         });
         break;
       }
@@ -195,6 +197,24 @@ export class GobangRoom {
 
       case 'leave': {
         try { ws.close(); } catch {}
+        break;
+      }
+
+      case 'chat': {
+        if (sess.color === 0) return;            // 未确认角色不能发
+        const text = String(msg.text || '').slice(0, 200).trim();
+        if (!text) return;
+        const chatMsg = {
+          sender: sess.color,
+          name: sess.name,
+          text,
+          time: Date.now()
+        };
+        this.chatHistory.push(chatMsg);
+        // 限制最近 200 条
+        if (this.chatHistory.length > 200) this.chatHistory.shift();
+        this.broadcast({ type: 'chat', ...chatMsg });
+        await this.save();
         break;
       }
     }
@@ -275,7 +295,8 @@ export class GobangRoom {
       gameOver: this.gameOver,
       winner: this.winner,
       winLine: this.winLine,
-      lastTick: this.lastTick
+      lastTick: this.lastTick,
+      chatHistory: this.chatHistory
     });
   }
 }
