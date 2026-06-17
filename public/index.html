@@ -1,0 +1,612 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+<title>五子棋 · 联机对战</title>
+<script src="https://unpkg.com/vue@3.3.4/dist/vue.global.prod.js"></script>
+<style>
+  * { margin:0; padding:0; box-sizing:border-box; -webkit-tap-highlight-color: transparent; }
+  html, body {
+    background-color: #0F172A;
+    color: #fff;
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+    min-height: 100vh;
+  }
+  #app { width: 100%; padding: 12px; }
+
+  .card {
+    width: 100%;
+    max-width: 600px;
+    margin: 0 auto 12px;
+    background-color: #1E293B;
+    border-radius: 12px;
+    padding: 16px;
+  }
+
+  .title-card { text-align: center; padding: 8px 16px !important; }
+  .title-card h1 {
+    padding: 8px 20px;
+    background: rgba(15, 23, 42, 0.9);
+    border-radius: 20px;
+    color: #7dd3fc;
+    font-size: 16px;
+    font-weight: bold;
+    border: 1px solid rgba(125, 211, 252, 0.2);
+    display: inline-block;
+  }
+  .title-card p { font-size: 14px; color: #93C5FD; margin-top: 8px; }
+
+  /* 主页 */
+  .home-card { text-align: center; }
+  .home-card h2 { color: #93C5FD; font-size: 18px; margin-bottom: 16px; }
+  .input {
+    width: 100%;
+    padding: 14px 12px;
+    border-radius: 8px;
+    border: 1px solid #334155;
+    background: #0F172A;
+    color: #fff;
+    font-size: 20px;
+    text-align: center;
+    font-family: 'Courier New', monospace;
+    letter-spacing: 4px;
+    text-transform: uppercase;
+    margin-bottom: 10px;
+  }
+  .input:focus { outline: none; border-color: #7dd3fc; }
+
+  .btn {
+    display: block;
+    width: 100%;
+    padding: 12px 0;
+    border: none;
+    border-radius: 8px;
+    font-size: 15px;
+    font-weight: 600;
+    cursor: pointer;
+    color: #fff;
+    margin-bottom: 10px;
+  }
+  .btn:last-child { margin-bottom: 0; }
+  .btn-primary { background-color: #16A34A; }
+  .btn-secondary { background-color: #2563EB; }
+  .btn-warning { background-color: #F59E0B; }
+  .btn-danger { background-color: #DC2626; }
+  .btn-slate { background-color: #334155; }
+  .btn:active:not(:disabled) { filter: brightness(1.15); }
+  .btn:disabled { cursor: not-allowed; opacity: 0.5; }
+
+  /* 房间号 */
+  .room-info { text-align: center; }
+  .room-info .hint { color: #93C5FD; font-size: 14px; }
+  .room-code {
+    font-family: 'Courier New', monospace;
+    font-size: 36px;
+    font-weight: bold;
+    letter-spacing: 6px;
+    color: #FCD34D;
+    background: rgba(245, 158, 11, 0.12);
+    padding: 12px 20px;
+    border-radius: 12px;
+    border: 1px solid rgba(245, 158, 11, 0.4);
+    display: inline-block;
+    margin: 8px 0;
+  }
+  .share-link {
+    color: #7dd3fc;
+    font-size: 12px;
+    word-break: break-all;
+    background: #0F172A;
+    padding: 8px;
+    border-radius: 6px;
+    margin: 8px 0;
+    text-align: left;
+  }
+
+  /* 状态卡 */
+  .status-card { padding: 10px; }
+  .status-banner {
+    text-align: center;
+    font-size: 14px;
+    font-weight: 600;
+    color: #FCD34D;
+    padding: 6px 14px;
+    background: rgba(245, 158, 11, 0.12);
+    border: 1px solid rgba(245, 158, 11, 0.4);
+    border-radius: 20px;
+    margin: 0 auto 8px;
+    width: fit-content;
+  }
+  .status-banner.draw {
+    color: #94A3B8;
+    background: rgba(100, 116, 139, 0.15);
+    border-color: rgba(100, 116, 139, 0.4);
+  }
+  .panes { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+  .player-pane {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 10px 12px;
+    border-radius: 8px;
+    background: #0F172A;
+    border: 1px solid #334155;
+    transition: all 0.2s;
+  }
+  .player-pane.active {
+    background: rgba(125, 211, 252, 0.10);
+    border-color: rgba(125, 211, 252, 0.5);
+    box-shadow: 0 0 0 1px rgba(125, 211, 252, 0.15) inset;
+  }
+  .player-pane.active .time { color: #7dd3fc; }
+  .player-pane .dot { width: 22px; height: 22px; }
+  .pane-info { flex: 1; min-width: 0; }
+  .pane-name { font-size: 12px; color: #94A3B8; font-weight: 500; margin-bottom: 2px; }
+  .pane-name .me { color: #7dd3fc; font-weight: 700; }
+  .time {
+    font-family: 'Courier New', ui-monospace, monospace;
+    font-size: 18px;
+    font-weight: 700;
+    color: #E2E8F0;
+    font-variant-numeric: tabular-nums;
+    line-height: 1.1;
+  }
+  .pane-turn {
+    font-size: 10px;
+    color: #7dd3fc;
+    font-weight: 600;
+    letter-spacing: 1px;
+    margin-top: 2px;
+    height: 12px;
+  }
+  .pane-turn:empty { display: none; }
+
+  /* dot */
+  .dot {
+    width: 18px;
+    height: 18px;
+    border-radius: 50%;
+    border: 1px solid #94A3B8;
+    flex-shrink: 0;
+  }
+  .dot.black { background: radial-gradient(circle at 35% 30%, #666 0%, #000 85%); }
+  .dot.white { background: radial-gradient(circle at 35% 30%, #fff 0%, #d0d0d0 95%); }
+
+  /* 棋盘 */
+  .board-card { padding: 12px; }
+  .board {
+    position: relative;
+    width: 100%;
+    aspect-ratio: 1 / 1;
+    background: #E8C988;
+    background-image:
+      linear-gradient(45deg, rgba(212,184,120,.25) 25%, transparent 25%),
+      linear-gradient(-45deg, rgba(212,184,120,.25) 25%, transparent 25%),
+      linear-gradient(45deg, transparent 75%, rgba(212,184,120,.25) 75%),
+      linear-gradient(-45deg, transparent 75%, rgba(212,184,120,.25) 75%);
+    background-size: 8px 8px;
+    background-position: 0 0, 0 4px, 4px -4px, -4px 0;
+    border: 2px solid #6B4E1F;
+    border-radius: 8px;
+    box-shadow: inset 0 0 18px rgba(107, 78, 31, 0.25);
+    cursor: crosshair;
+    user-select: none;
+    touch-action: manipulation;
+  }
+  .board-svg { position: absolute; top: 0; left: 0; width: 100%; height: 100%; pointer-events: none; }
+  .board-svg .grid line { stroke: #2C2419; stroke-width: 0.5; }
+  .board-svg .star  circle { fill: #2C2419; }
+  .board-svg .win-line line { stroke: #DC2626; stroke-width: 2.5; stroke-linecap: round; }
+  .stone {
+    position: absolute;
+    border-radius: 50%;
+    pointer-events: none;
+    transform: translate(-50%, -50%);
+    z-index: 2;
+  }
+  .stone.black { background: radial-gradient(circle at 35% 30%, #666 0%, #0A0A0A 85%); box-shadow: 1px 1px 2px rgba(0,0,0,0.6); }
+  .stone.white { background: radial-gradient(circle at 35% 30%, #ffffff 0%, #C8C8C8 95%); box-shadow: 1px 1px 2px rgba(0,0,0,0.35); }
+
+  .btn-row2 { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+  .btn-row2 .btn { margin-bottom: 0; }
+
+  /* 落子记录 */
+  .history-card { padding: 14px 16px; }
+  .history-title { font-size: 14px; color: #93C5FD; margin-bottom: 10px; font-weight: 600; }
+  .history-list { display: flex; flex-wrap: wrap; gap: 6px; max-height: 110px; overflow-y: auto; padding: 2px; }
+  .history-list::-webkit-scrollbar { width: 5px; }
+  .history-list::-webkit-scrollbar-thumb { background: #475569; border-radius: 3px; }
+  .move-tag {
+    font-size: 12px;
+    padding: 3px 9px;
+    border-radius: 12px;
+    border: 1px solid #334155;
+    background: #0F172A;
+    color: #CBD5E1;
+    white-space: nowrap;
+  }
+
+  .footer { max-width: 600px; margin: 18px auto 0; text-align: center; font-size: 12px; color: #64748B; }
+  .footer a { color: #7dd3fc; text-decoration: none; }
+  .footer a:hover { text-decoration: underline; }
+
+  /* 连接状态 */
+  .conn {
+    max-width: 600px;
+    margin: 0 auto 8px;
+    text-align: center;
+    font-size: 12px;
+    padding: 6px 10px;
+    border-radius: 6px;
+  }
+  .conn.connecting { color: #FCD34D; background: rgba(245,158,11,0.1); border: 1px solid rgba(245,158,11,0.3); }
+  .conn.error      { color: #FCA5A5; background: rgba(220,38,38,0.1); border: 1px solid rgba(220,38,38,0.3); }
+
+  /* 弹窗 */
+  .modal-bg {
+    position: fixed; inset: 0;
+    background-color: rgba(0,0,0,0.7);
+    display: flex; align-items: center; justify-content: center;
+    z-index: 999; padding: 12px;
+  }
+  .modal-card {
+    width: 100%; max-width: 420px;
+    background-color: #1E293B;
+    border-radius: 12px;
+    padding: 20px;
+  }
+  .modal-card h2 { color: #93C5FD; font-size: 20px; margin-bottom: 12px; text-align: center; }
+  .modal-card p  { color: #CBD5E1; font-size: 14px; line-height: 1.6; margin-bottom: 16px; }
+</style>
+</head>
+<body>
+<div id="app">
+
+  <!-- 标题 -->
+  <div class="card title-card">
+    <h1>五子棋 · 联机对战</h1>
+    <p>分享房间号，扫码或输入即可对战</p>
+  </div>
+
+  <div v-if="connStatus" class="conn" :class="connClass">{{ connStatus }}</div>
+
+  <!-- 主页 -->
+  <div v-if="mode==='home'" class="card home-card">
+    <h2>开始一局对战</h2>
+    <button class="btn btn-primary" @click="createRoom">创建房间</button>
+    <input v-model="joinCode" class="input" placeholder="房间号"
+           maxlength="6" @keyup.enter="joinRoom">
+    <button class="btn btn-secondary" @click="joinRoom" :disabled="joinCode.length!==6">加入房间</button>
+  </div>
+
+  <!-- 等待对方 -->
+  <div v-else-if="mode==='waiting'" class="card room-info">
+    <div class="hint">房间已创建，等待对手加入</div>
+    <div class="room-code">{{ roomId }}</div>
+    <div class="share-link">{{ shareUrl }}</div>
+    <button class="btn btn-slate" @click="copyLink">复制链接</button>
+    <button class="btn btn-warning" @click="cancel">取消</button>
+  </div>
+
+  <!-- 对弈中 -->
+  <div v-else>
+    <!-- 状态卡：双方计时器 -->
+    <div class="card status-card">
+      <div v-if="winner" class="status-banner">
+        {{ winner===myColor ? '🏆 你赢了！' : '💔 你输了 · ' + (winner===1?'黑方':'白方') + ' 获胜' }}
+      </div>
+      <div v-else-if="isDraw" class="status-banner draw">🤝 平局</div>
+      <div class="panes">
+        <div class="player-pane" :class="{active: currentPlayer===1 && !finished}">
+          <span class="dot black"></span>
+          <div class="pane-info">
+            <div class="pane-name">黑方 <span class="me" v-if="myColor===1">（你）</span></div>
+            <div class="time">{{ fmtTime(blackTime) }}</div>
+            <div class="pane-turn">{{ currentPlayer===1 && !finished ? '● 落子中' : '' }}</div>
+          </div>
+        </div>
+        <div class="player-pane" :class="{active: currentPlayer===2 && !finished}">
+          <span class="dot white"></span>
+          <div class="pane-info">
+            <div class="pane-name">白方 <span class="me" v-if="myColor===2">（你）</span></div>
+            <div class="time">{{ fmtTime(whiteTime) }}</div>
+            <div class="pane-turn">{{ currentPlayer===2 && !finished ? '● 落子中' : '' }}</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- 棋盘 -->
+    <div class="card board-card">
+      <div ref="boardRef" class="board" @click="handleClick">
+        <svg class="board-svg" viewBox="0 0 600 600" preserveAspectRatio="xMidYMid meet">
+          <g class="grid">
+            <line v-for="i in 15" :key="'h'+i"
+                  :x1="20" :y1="20 + (i-1)*40"
+                  :x2="580" :y2="20 + (i-1)*40" />
+            <line v-for="i in 15" :key="'v'+i"
+                  :x1="20 + (i-1)*40" :y1="20"
+                  :x2="20 + (i-1)*40" :y2="580" />
+          </g>
+          <g class="star">
+            <circle v-for="(p,idx) in stars" :key="idx"
+                    :cx="20 + (p.x-1)*40" :cy="20 + (p.y-1)*40" r="3" />
+          </g>
+          <g v-if="winLine" class="win-line">
+            <line
+              :x1="20 + (winLine[0].x-1)*40" :y1="20 + (winLine[0].y-1)*40"
+              :x2="20 + (winLine[4].x-1)*40" :y2="20 + (winLine[4].y-1)*40" />
+          </g>
+        </svg>
+        <div v-for="(s,idx) in moves" :key="idx"
+             class="stone" :class="s.player===1?'black':'white'"
+             :style="stoneStyle(s)"></div>
+      </div>
+    </div>
+
+    <!-- 控制 -->
+    <div class="card" style="padding:12px;">
+      <div class="btn-row2">
+        <button class="btn btn-warning" @click="requestRestart" :disabled="finished">申请重开</button>
+        <button class="btn btn-danger"  @click="leave">退出房间</button>
+      </div>
+    </div>
+
+    <!-- 落子记录 -->
+    <div class="card history-card">
+      <div class="history-title">落子记录 ({{ moves.length }})</div>
+      <div class="history-list">
+        <span v-if="moves.length===0" style="font-size:12px;color:#64748B;">暂无</span>
+        <span v-for="(m,i) in moves" :key="i" class="move-tag">
+          {{ i+1 }}. {{ m.player===1?'黑':'白' }} {{ m.x }},{{ m.y }}
+        </span>
+      </div>
+    </div>
+  </div>
+
+  <div class="footer">
+    <a href="#" @click.prevent="goHome" v-if="mode!=='home'">← 返回主页</a>
+  </div>
+
+  <!-- 弹窗 -->
+  <div v-if="modal" class="modal-bg" @click.self="modal=null">
+    <div class="modal-card">
+      <h2>{{ modal.title }}</h2>
+      <p>{{ modal.text }}</p>
+      <button v-if="modal.action" class="btn btn-primary" @click="modal.action.fn">{{ modal.action.label }}</button>
+      <button v-else class="btn btn-slate" @click="modal=null">关闭</button>
+    </div>
+  </div>
+
+</div>
+
+<script>
+const { createApp, ref, reactive, computed, onUnmounted } = Vue;
+
+const VB = 600, PAD = 20, CELL = 40;
+const STARS = [{x:3,y:3},{x:3,y:11},{x:7,y:7},{x:11,y:3},{x:11,y:11}];
+
+function genRoomId() {
+  // 去掉易混的 0/O 1/I/L
+  const chars = 'ABCDEFGHJKMNPQRSTUVWXYZ23456789';
+  let s = '';
+  for (let i = 0; i < 6; i++) s += chars[Math.floor(Math.random() * chars.length)];
+  return s;
+}
+function fmtTime(ms) {
+  const total = Math.max(0, Math.floor((ms||0) / 1000));
+  return String(Math.floor(total/60)).padStart(2,'0') + ':' + String(total%60).padStart(2,'0');
+}
+
+createApp({
+  setup() {
+    const mode       = ref('home');
+    const joinCode   = ref('');
+    const roomId     = ref('');
+    const myColor    = ref(0);
+
+    const moves         = ref([]);
+    const currentPlayer = ref(1);
+    const blackTime     = ref(0);
+    const whiteTime     = ref(0);
+    const winner        = ref(0);
+    const winLine       = ref(null);
+    const gameOver      = ref(false);
+
+    const connStatus = ref('');
+    const connClass  = ref('connecting');
+    const modal      = ref(null);
+
+    const stars = STARS;
+    const boardRef = ref(null);
+    const finished = computed(() => !!winner.value || gameOver.value);
+    const isDraw   = computed(() => !winner.value && gameOver.value && moves.value.length === 225);
+    const shareUrl = computed(() => location.origin + location.pathname + '#' + roomId.value);
+
+    let ws = null;
+
+    function showModal(title, text, action) {
+      modal.value = { title, text, action };
+    }
+    function setConn(text, cls) {
+      connStatus.value = text || '';
+      connClass.value = cls || 'connecting';
+    }
+
+    function connect(roomIdToJoin, role) {
+      if (ws) { try { ws.close(); } catch {} }
+      const protocol = location.protocol === 'https:' ? 'wss:' : 'ws:';
+      const url = `${protocol}//${location.host}/api/room/${roomIdToJoin}`;
+      setConn('正在连接…', 'connecting');
+      ws = new WebSocket(url);
+
+      ws.onopen = () => {
+        setConn('');
+        ws.send(JSON.stringify({
+          type: role, roomId: roomIdToJoin,
+          name: role === 'create' ? '黑方' : '白方'
+        }));
+      };
+      ws.onmessage = (e) => {
+        let msg; try { msg = JSON.parse(e.data); } catch { return; }
+        handleServer(msg);
+      };
+      ws.onerror = () => setConn('连接出错', 'error');
+      ws.onclose = () => {
+        if (mode.value === 'playing' || mode.value === 'waiting') {
+          setConn('连接已断开', 'error');
+        }
+      };
+    }
+
+    function handleServer(msg) {
+      switch (msg.type) {
+        case 'created':
+          myColor.value = msg.color;
+          mode.value = 'waiting';
+          break;
+        case 'joined':
+          myColor.value = msg.color;
+          mode.value = 'playing';
+          break;
+        case 'opponent_joined':
+          mode.value = 'playing';
+          showModal('对手已加入', '游戏开始！');
+          break;
+        case 'sync':
+          moves.value         = msg.moves || [];
+          currentPlayer.value = msg.currentPlayer;
+          blackTime.value     = msg.blackTime;
+          whiteTime.value     = msg.whiteTime;
+          gameOver.value      = msg.gameOver;
+          winner.value        = msg.winner;
+          winLine.value       = msg.winLine;
+          break;
+        case 'move':
+          moves.value.push({ x: msg.x, y: msg.y, player: msg.player });
+          blackTime.value     = msg.blackTime;
+          whiteTime.value     = msg.whiteTime;
+          currentPlayer.value = msg.color;
+          if (msg.gameOver) {
+            gameOver.value = true;
+            winner.value   = msg.winner;
+            winLine.value  = msg.winLine;
+            if (msg.winner === myColor.value) {
+              showModal('🏆 胜利！', '你赢了这一局');
+            } else if (msg.winner) {
+              showModal('💔 失败', '你输了，再来一局？');
+            } else {
+              showModal('🤝 平局', '势均力敌');
+            }
+          }
+          break;
+        case 'tick':
+          blackTime.value = msg.blackTime;
+          whiteTime.value = msg.whiteTime;
+          break;
+        case 'restart':
+          moves.value         = [];
+          currentPlayer.value = msg.currentPlayer;
+          blackTime.value     = 0;
+          whiteTime.value     = 0;
+          winner.value        = 0;
+          winLine.value       = null;
+          gameOver.value      = false;
+          break;
+        case 'opponent_left':
+          showModal('对手已离开', '你可以继续等待或退出房间');
+          break;
+        case 'error':
+          showModal('错误', msg.message);
+          if (ws) { try { ws.close(); } catch {} }
+          goHome();
+          break;
+      }
+    }
+
+    function createRoom() {
+      roomId.value = genRoomId();
+      connect(roomId.value, 'create');
+    }
+    function joinRoom() {
+      const code = joinCode.value.trim().toUpperCase();
+      if (code.length !== 6) return;
+      roomId.value = code;
+      connect(code, 'join');
+    }
+    function copyLink() {
+      navigator.clipboard.writeText(shareUrl.value)
+        .then(() => showModal('已复制', '房间链接已复制到剪贴板'))
+        .catch(() => showModal('复制失败', '请手动复制链接'));
+    }
+    function cancel() {
+      if (ws) { try { ws.close(); } catch {} ws = null; }
+      goHome();
+    }
+    function leave() {
+      if (ws) { try { ws.close(); } catch {} ws = null; }
+      goHome();
+    }
+    function goHome() {
+      mode.value = 'home';
+      joinCode.value = '';
+      roomId.value = '';
+      moves.value = [];
+      winner.value = 0;
+      winLine.value = null;
+      gameOver.value = false;
+      currentPlayer.value = 1;
+      blackTime.value = 0;
+      whiteTime.value = 0;
+      location.hash = '';
+      setConn('');
+    }
+    function requestRestart() {
+      if (finished.value) return;
+      if (ws) ws.send(JSON.stringify({ type: 'restart' }));
+    }
+    function handleClick(e) {
+      if (finished.value) return;
+      if (currentPlayer.value !== myColor.value) return;
+      const rect = boardRef.value.getBoundingClientRect();
+      const scale = VB / rect.width;
+      const px = (e.clientX - rect.left) * scale;
+      const py = (e.clientY - rect.top)  * scale;
+      const gx = Math.round((px - PAD) / CELL) + 1;
+      const gy = Math.round((py - PAD) / CELL) + 1;
+      if (gx < 1 || gx > 15 || gy < 1 || gy > 15) return;
+      if (moves.value.some(m => m.x===gx && m.y===gy)) return;
+      if (ws) ws.send(JSON.stringify({ type: 'move', x: gx, y: gy }));
+    }
+    function stoneStyle(s) {
+      const cx = PAD + (s.x - 1) * CELL;
+      const cy = PAD + (s.y - 1) * CELL;
+      return {
+        left:   (cx / VB * 100) + '%',
+        top:    (cy / VB * 100) + '%',
+        width:  (CELL * 0.92 / VB * 100) + '%',
+        height: (CELL * 0.92 / VB * 100) + '%'
+      };
+    }
+
+    // 自动从 hash 加入
+    if (location.hash && location.hash.length === 7) {
+      joinCode.value = location.hash.slice(1).toUpperCase();
+      setTimeout(() => joinRoom(), 100);
+    }
+
+    onUnmounted(() => { if (ws) try { ws.close(); } catch {} });
+
+    return {
+      mode, joinCode, roomId, myColor, moves, currentPlayer,
+      blackTime, whiteTime, winner, winLine, gameOver, finished, isDraw,
+      connStatus, connClass, modal, stars, boardRef, shareUrl,
+      createRoom, joinRoom, copyLink, cancel, leave, goHome, requestRestart,
+      handleClick, stoneStyle, fmtTime
+    };
+  }
+}).mount('#app');
+</script>
+</body>
+</html>

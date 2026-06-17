@@ -1,0 +1,14 @@
+name = "gobang-online"
+compatibility_date = "2024-01-01"
+pages_build_output_dir = "./public"
+
+# Durable Object 绑定
+# 房间状态由 GobangRoom DO 维护，每房间一个实例
+[[durable_objects.bindings]]
+name = "GOBANG_ROOM"
+class_name = "GobangRoom"
+
+# 首次部署时需要这个 migration
+[[migrations]]
+tag = "v1"
+new_classes = ["GobangRoom"]
