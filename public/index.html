@@ -40,6 +40,19 @@
   /* 主页 */
   .home-card { text-align: center; }
   .home-card h2 { color: #93C5FD; font-size: 18px; margin-bottom: 16px; }
+  .home-link {
+    margin-top: 20px;
+    padding-top: 16px;
+    border-top: 1px solid #334155;
+    font-size: 13px;
+  }
+  .home-link a {
+    color: #7dd3fc;
+    text-decoration: none;
+    opacity: 0.75;
+    transition: opacity 0.2s;
+  }
+  .home-link a:hover { opacity: 1; text-decoration: underline; }
   .input {
     width: 100%;
     padding: 14px 12px;
@@ -280,6 +293,9 @@
     <input v-model="joinCode" class="input" placeholder="房间号"
            maxlength="6" @keyup.enter="joinRoom">
     <button class="btn btn-secondary" @click="joinRoom" :disabled="joinCode.length!==6">加入房间</button>
+    <div class="home-link">
+      <a href="https://brain-games-pwa.pages.dev" target="_blank" rel="noopener">← 返回游戏主页（数独 · 华容道 · 五子棋单机版）</a>
+    </div>
   </div>
 
   <!-- 等待对方 -->
