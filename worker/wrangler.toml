@@ -1,4 +1,4 @@
-name = "gobang-room-worker"
+name = "gobang-ol"
 main = "index.js"
 compatibility_date = "2024-01-01"
 
