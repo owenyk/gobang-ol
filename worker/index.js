@@ -279,3 +279,16 @@ export class GobangRoom {
     });
   }
 }
+
+// Module Worker 必须有 default export（wrangler 4.x 强制要求）。
+// 这个 Worker 唯一的职责是持有 GobangRoom Durable Object class，
+// 实际的 HTTP/WS 入口由 Pages Functions 处理（functions/api/[[path]].js）。
+// Pages 通过 env.GOBANG_ROOM.get(roomId) 调用这里的 DO。
+export default {
+  async fetch() {
+    return new Response(
+      'GobangRoom DO worker. Use the Pages API (/api/room/:roomId) to interact with rooms.',
+      { status: 200, headers: { 'Content-Type': 'text/plain; charset=utf-8' } }
+    );
+  }
+};
