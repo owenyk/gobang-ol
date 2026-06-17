@@ -18,32 +18,37 @@ wrangler pages dev ./public --port 8788 --durable_objects=GOBANG_ROOM=GobangRoom
 
 > Durable Object 的本地模拟需要 wrangler 3.x+。
 
-## 部署到 Cloudflare Pages
+## 部署到 Cloudflare
 
-### 方式 A：Git 集成（推荐）
+这个项目需要部署 **两个** Cloudflare 项目（同仓库不同子目录）：
 
-1. 把代码 push 到 GitHub
-2. Cloudflare Dashboard → Pages → Connect to Git
-3. 选这个仓库
-4. Build settings:
-   - **Build command**: 留空
-   - **Build output directory**: `public`
-5. 保存后 Cloudflare 自动部署
+### 项目 1：Pages（静态 + WebSocket 路由）
 
-> ⚠️ Pages 项目 settings → Functions → Durable Object bindings 里手动添加：
-> - Variable name: `GOBANG_ROOM`
-> - Class name: `GobangRoom`
-> 这样 wrangler.toml 之外的 binding 也生效（双保险）。
+1. Cloudflare Dashboard → Workers & Pages → Create application → **Pages** → Connect to Git
+2. 选 `owenyk/gobang-ol` 仓库
+3. Build settings:
+   - Build command: **留空**
+   - Build output directory: **`public`**
+4. Save and Deploy → 等首次部署完成
 
-### 方式 B：wrangler CLI
+### 项目 2：Workers（持有 Durable Object class）
 
-```bash
-npm install -g wrangler
-wrangler login
-wrangler pages deploy ./public --project-name=gobang-online
-```
+1. Cloudflare Dashboard → Workers & Pages → Create application → **Workers** → Connect to Git
+2. 选 `owenyk/gobang-ol` 仓库
+3. Build settings:
+   - Root directory: **`worker`**
+   - Build command: **留空**
+4. Save and Deploy → 这次部署会创建 `GobangRoom` DO class
 
-> 首次部署会提示创建 Pages 项目，之后直接 push。
+### 最后：在 Pages 里加 DO binding
+
+1. Pages 项目 → Settings → Functions → Durable Object bindings → Add binding
+2. Variable name: `GOBANG_ROOM`
+3. Durable Object class: `GobangRoom`
+4. Worker: `gobang-room-worker`
+5. 保存 → 触发 Pages 重新部署
+
+> 根目录的 `wrangler.toml` 已配好 `script_name = "gobang-room-worker"`，自动 deploy 时会带上 binding；手动 Dashboard 配作为双保险。
 
 ## 测试流程
 

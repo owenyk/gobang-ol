@@ -1,14 +1,10 @@
-name = "gobang-online"
+name = "gobang-ol"
 compatibility_date = "2024-01-01"
 pages_build_output_dir = "./public"
 
-# Durable Object 绑定
-# 房间状态由 GobangRoom DO 维护，每房间一个实例
+# Pages Function 通过这个 binding 调外部 Worker 的 DO
+# GobangRoom class 在 gobang-room-worker 项目里持有
 [[durable_objects.bindings]]
 name = "GOBANG_ROOM"
 class_name = "GobangRoom"
-
-# 首次部署时需要这个 migration
-[[migrations]]
-tag = "v1"
-new_classes = ["GobangRoom"]
+script_name = "gobang-room-worker"

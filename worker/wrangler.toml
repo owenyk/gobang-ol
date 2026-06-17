@@ -1,0 +1,13 @@
+name = "gobang-room-worker"
+main = "index.js"
+compatibility_date = "2024-01-01"
+
+# Durable Object class 定义在这里
+[[durable_objects.bindings]]
+name = "GOBANG_ROOM"
+class_name = "GobangRoom"
+
+# 首次部署时需要这个 migration 创建 class
+[[migrations]]
+tag = "v1"
+new_classes = ["GobangRoom"]
