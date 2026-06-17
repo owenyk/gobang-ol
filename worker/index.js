@@ -1,8 +1,7 @@
-// Cloudflare Pages Function: GobangRoom Durable Object
+// Cloudflare Worker: GobangRoom Durable Object 持有者
 //
-// 房间状态由 Durable Object "GobangRoom" 维护（每房间一个实例），
-// 协议见文件顶部注释。Pages 项目通过 wrangler.toml 里的
-// [[durable_objects.bindings]] name = "GOBANG_ROOM" 暴露给路由层使用。
+// 这个 Worker 是唯一的 GobangRoom class 持有者，Pages 项目通过
+// wrangler.toml 的 [[durable_objects.bindings]] script_name 引用这个 Worker。
 //
 // 协议：JSON 文本消息
 //
@@ -54,7 +53,7 @@ export class GobangRoom {
     });
   }
 
-  // 处理 HTTP/WS 请求（路由层转发过来）
+  // 处理 HTTP/WS 请求（Pages Function 转发过来）
   async fetch(request) {
     if (request.headers.get('Upgrade') !== 'websocket') {
       return new Response('Expected WebSocket', { status: 400 });

@@ -2,10 +2,11 @@ name = "gobang-ol"
 compatibility_date = "2024-01-01"
 pages_build_output_dir = "./public"
 
-# Durable Object binding：Pages build 时 wrangler 自动识别
-# functions/ 里 export 的 GobangRoom class，注册到 env.GOBANG_ROOM binding。
-# 注意：Pages wrangler.toml 不支持 [[migrations]] 字段（那是 wrangler deploy 用的），
-# Pages build 阶段自动管理 DO namespace 首次创建。
+# Durable Object binding：Pages 通过 script_name 引用外部 Worker 项目
+# `gobang-room-worker` 持有的 GobangRoom class。
+# Pages 本身不持有 DO class，所以这里不能配 [[migrations]] 段
+# （migration 是 Worker 项目自己管理的，部署 Worker 项目时用）。
 [[durable_objects.bindings]]
 name = "GOBANG_ROOM"
 class_name = "GobangRoom"
+script_name = "gobang-room-worker"

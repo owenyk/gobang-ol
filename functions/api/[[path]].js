@@ -2,10 +2,11 @@
 //
 // 路径: /api/room/<6位房间号>
 // 协议: WebSocket
-// 房间状态由 Durable Object "GobangRoom" 维护（每房间一个实例）
+// 房间状态由 Durable Object "GobangRoom" 维护（每房间一个实例）。
 //
-// GobangRoom class 直接放在 functions/_lib/ 目录里，Pages build 阶段
-// wrangler 会自动识别 export 的 class 并注册到 env.GOBANG_ROOM binding。
+// GobangRoom class 在外部 Worker 项目 `gobang-room-worker` 的 worker/index.js 里。
+// Pages wrangler.toml 的 [[durable_objects.bindings]] script_name 引用这个 Worker。
+// 路由层只用 env.GOBANG_ROOM binding，不持有 class 本身。
 
 export async function onRequest(context) {
   const { request, env } = context;
