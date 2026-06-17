@@ -2,15 +2,10 @@ name = "gobang-ol"
 compatibility_date = "2024-01-01"
 pages_build_output_dir = "./public"
 
-# Durable Object binding：Pages build 阶段会读取这一段，
-# 自动用 new_sqlite_classes 创建 GobangRoom namespace 并注册 binding。
-# 不用再去 Dashboard 手动配（Dashboard 配置反而会跟 build 阶段冲突）。
+# Durable Object binding：Pages build 时 wrangler 自动识别
+# functions/ 里 export 的 GobangRoom class，注册到 env.GOBANG_ROOM binding。
+# 注意：Pages wrangler.toml 不支持 [[migrations]] 字段（那是 wrangler deploy 用的），
+# Pages build 阶段自动管理 DO namespace 首次创建。
 [[durable_objects.bindings]]
 name = "GOBANG_ROOM"
 class_name = "GobangRoom"
-
-# 首次部署时需要这个 migration 创建 DO class。
-# Free plan 强制用 new_sqlite_classes（DO 用 SQLite 存储），不能用老的 new_classes。
-[[migrations]]
-tag = "v1"
-new_sqlite_classes = ["GobangRoom"]
