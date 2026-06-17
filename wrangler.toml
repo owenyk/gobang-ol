@@ -3,8 +3,8 @@ compatibility_date = "2024-01-01"
 pages_build_output_dir = "./public"
 
 # Pages Function 通过这个 binding 调外部 Worker 的 DO
-# GobangRoom class 在 gobang-room-worker 项目里持有
+# GobangRoom class 在 Worker 项目里持有（CI 强制的 name = 仓库名 = "gobang-ol"）
 [[durable_objects.bindings]]
 name = "GOBANG_ROOM"
 class_name = "GobangRoom"
-script_name = "gobang-room-worker"
+script_name = "gobang-ol"
