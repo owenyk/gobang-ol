@@ -8,6 +8,7 @@ name = "GOBANG_ROOM"
 class_name = "GobangRoom"
 
 # 首次部署时需要这个 migration 创建 class
+# Free plan 强制用 new_sqlite_classes（DO 用 SQLite 存储），不能用老的 new_classes
 [[migrations]]
 tag = "v1"
-new_classes = ["GobangRoom"]
+new_sqlite_classes = ["GobangRoom"]
