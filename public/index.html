@@ -176,7 +176,7 @@
     color: #93C5FD;
   }
 
-  /* 移动端聊天面板：底部弹出 */
+  /* 移动端聊天面板：棋盘下方内联区域（不挡住棋盘） */
   @media (max-width: 768px) {
     .chat-toggle {
       right: 12px;
@@ -185,31 +185,19 @@
       transform: none;
     }
     .chat-panel {
-      right: 0;
-      left: 0;
-      top: auto;
-      bottom: 0;
-      width: 100%;
-      max-width: 100%;
-      height: 70vh;
-      max-height: 70vh;
-      border-left: none;
+      position: static;
+      width: auto;
+      max-width: none;
+      height: auto;
+      max-height: 50vh;
+      margin: 12px 8px 8px;
+      border-left: 1px solid #334155;
       border-top: 1px solid #334155;
-      border-top-left-radius: 16px;
-      border-top-right-radius: 16px;
-      transform: translateY(100%);
+      border-radius: 12px;
+      transform: none;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.3);
     }
-    .chat-panel.open { transform: translateY(0); }
-    .chat-header { border-top-left-radius: 16px; border-top-right-radius: 16px; }
-    .chat-header::before {
-      content: '';
-      display: block;
-      width: 36px;
-      height: 4px;
-      background: #475569;
-      border-radius: 2px;
-      margin: 0 auto 6px;
-    }
+    .chat-header { border-radius: 12px 12px 0 0; }
   }
 
   /* 状态卡 */
@@ -661,14 +649,14 @@
     <a href="#" @click.prevent="goHome" v-if="mode!=='home'">← 返回主页</a>
   </div>
 
-  <!-- 聊天侧边栏（仅 playing/waiting 显示） -->
-  <button v-if="mode!=='home'" class="chat-toggle" @click="chatOpen = !chatOpen" :title="chatOpen ? '隐藏聊天' : '展开聊天'">
+  <!-- 聊天侧边栏（仅双进入房后显示） -->
+  <button v-if="mode==='playing'" class="chat-toggle" @click="chatOpen = !chatOpen" :title="chatOpen ? '隐藏聊天' : '展开聊天'">
     <span v-if="!chatOpen">💬</span>
     <span v-else>✕</span>
     <span v-if="chatUnread > 0 && !chatOpen" class="chat-badge">{{ chatUnread }}</span>
   </button>
 
-  <div v-if="mode!=='home'" class="chat-panel" :class="{open: chatOpen}">
+  <div v-if="mode==='playing' && chatOpen" class="chat-panel">
     <div class="chat-header">
       <span class="chat-title">💬 聊天</span>
       <button class="chat-close" @click="chatOpen = false" title="隐藏">✕</button>
