@@ -53,6 +53,44 @@
     transition: opacity 0.2s;
   }
   .home-link a:hover { opacity: 1; text-decoration: underline; }
+
+  /* 主页面两种模式选择卡 */
+  .mode-cards {
+    display: flex;
+    gap: 12px;
+    margin-bottom: 4px;
+  }
+  .mode-card {
+    flex: 1;
+    padding: 18px 10px 16px;
+    border-radius: 12px;
+    text-align: center;
+    cursor: pointer;
+    transition: transform 0.2s, box-shadow 0.2s, background 0.2s;
+    background: #0F172A;
+    color: #fff;
+    font-family: inherit;
+    border: 1px solid transparent;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 4px;
+    text-decoration: none;
+  }
+  .mode-card:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 6px 18px rgba(0, 0, 0, 0.4);
+  }
+  .mode-card.local  { border-color: rgba(245, 158, 11, 0.45); }
+  .mode-card.local:hover  { background: rgba(245, 158, 11, 0.10); }
+  .mode-card.online { border-color: rgba(168, 85, 247, 0.45); }
+  .mode-card.online:hover { background: rgba(168, 85, 247, 0.10); }
+  .mode-card .icon { font-size: 32px; line-height: 1; }
+  .mode-card .title { font-size: 15px; font-weight: 700; color: #7dd3fc; }
+  .mode-card .desc { font-size: 11px; color: #94A3B8; line-height: 1.4; }
+  @media (max-width: 400px) {
+    .mode-cards { flex-direction: column; }
+  }
   .input {
     width: 100%;
     padding: 14px 12px;
@@ -115,6 +153,63 @@
     border-radius: 6px;
     margin: 8px 0;
     text-align: left;
+  }
+
+  /* 二维码 */
+  .qr-wrap {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 6px;
+    margin: 12px 0;
+  }
+  .qr-img {
+    width: 180px;
+    height: 180px;
+    background: #fff;
+    padding: 8px;
+    border-radius: 10px;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.4);
+  }
+  .qr-hint {
+    font-size: 12px;
+    color: #93C5FD;
+  }
+
+  /* 移动端聊天面板：底部弹出 */
+  @media (max-width: 768px) {
+    .chat-toggle {
+      right: 12px;
+      bottom: 16px;
+      top: auto;
+      transform: none;
+    }
+    .chat-panel {
+      right: 0;
+      left: 0;
+      top: auto;
+      bottom: 0;
+      width: 100%;
+      max-width: 100%;
+      height: 70vh;
+      max-height: 70vh;
+      border-left: none;
+      border-top: 1px solid #334155;
+      border-top-left-radius: 16px;
+      border-top-right-radius: 16px;
+      transform: translateY(100%);
+    }
+    .chat-panel.open { transform: translateY(0); }
+    .chat-header { border-top-left-radius: 16px; border-top-right-radius: 16px; }
+    .chat-header::before {
+      content: '';
+      display: block;
+      width: 36px;
+      height: 4px;
+      background: #475569;
+      border-radius: 2px;
+      margin: 0 auto 6px;
+    }
   }
 
   /* 状态卡 */
@@ -438,11 +533,31 @@
 
   <!-- 主页 -->
   <div v-if="mode==='home'" class="card home-card">
-    <h2>开始一局对战</h2>
-    <button class="btn btn-primary" @click="createRoom">创建房间</button>
-    <input v-model="joinCode" class="input" placeholder="房间号"
-           maxlength="6" @keyup.enter="joinRoom">
-    <button class="btn btn-secondary" @click="joinRoom" :disabled="joinCode.length!==6">加入房间</button>
+    <h2>选择对战模式</h2>
+
+    <!-- 两种模式选择 -->
+    <div v-if="homeSubMode===null" class="mode-cards">
+      <a href="https://brain-games-pwa.pages.dev/gobang" target="_blank" rel="noopener" class="mode-card local">
+        <span class="icon">♟️</span>
+        <span class="title">本地对战</span>
+        <span class="desc">同设备轮流落子</span>
+      </a>
+      <button type="button" class="mode-card online" @click="homeSubMode='online'">
+        <span class="icon">🌐</span>
+        <span class="title">联机对战</span>
+        <span class="desc">创建/加入房间</span>
+      </button>
+    </div>
+
+    <!-- 联机子界面：创建/加入 -->
+    <div v-else-if="homeSubMode==='online'">
+      <button class="btn btn-primary" @click="createRoom">创建房间</button>
+      <input v-model="joinCode" class="input" placeholder="房间号"
+             maxlength="6" @keyup.enter="joinRoom">
+      <button class="btn btn-secondary" @click="joinRoom" :disabled="joinCode.length!==6">加入房间</button>
+      <button class="btn btn-slate" @click="homeSubMode=null">← 返回选择</button>
+    </div>
+
     <div class="home-link">
       <a href="https://brain-games-pwa.pages.dev" target="_blank" rel="noopener">← 返回游戏主页（数独 · 华容道 · 五子棋单机版）</a>
     </div>
@@ -454,6 +569,13 @@
     <div class="room-code">{{ roomId }}</div>
     <div class="share-link">{{ shareUrl }}</div>
     <button class="btn btn-slate" @click="copyLink">复制链接</button>
+    <button class="btn btn-secondary" @click="qrOpen = !qrOpen">
+      {{ qrOpen ? '隐藏二维码' : '扫描二维码加入' }}
+    </button>
+    <div v-if="qrOpen" class="qr-wrap">
+      <img :src="qrCodeUrl" alt="房间二维码" class="qr-img" />
+      <div class="qr-hint">用手机扫描二维码加入</div>
+    </div>
     <button class="btn btn-warning" @click="cancel">取消</button>
   </div>
 
@@ -598,6 +720,8 @@ function fmtTime(ms) {
 createApp({
   setup() {
     const mode       = ref('home');
+    const homeSubMode = ref(null);   // null | 'online'
+    const qrOpen     = ref(false);
     const joinCode   = ref('');
     const roomId     = ref('');
     const myColor    = ref(0);
@@ -626,6 +750,9 @@ createApp({
     const finished = computed(() => !!winner.value || gameOver.value);
     const isDraw   = computed(() => !winner.value && gameOver.value && moves.value.length === 225);
     const shareUrl = computed(() => location.origin + location.pathname + '#' + roomId.value);
+    const qrCodeUrl = computed(() =>
+      `https://api.qrserver.com/v1/create-qr-code/?size=240x240&margin=2&data=${encodeURIComponent(shareUrl.value)}`
+    );
 
     let ws = null;
 
@@ -871,9 +998,9 @@ createApp({
     });
 
     return {
-      mode, joinCode, roomId, myColor, moves, currentPlayer,
+      mode, homeSubMode, qrOpen, joinCode, roomId, myColor, moves, currentPlayer,
       blackTime, whiteTime, winner, winLine, gameOver, finished, isDraw,
-      connStatus, connClass, modal, stars, boardRef, shareUrl,
+      connStatus, connClass, modal, stars, boardRef, shareUrl, qrCodeUrl,
       chatOpen, chatMessages, chatInput, chatUnread, chatListRef,
       createRoom, joinRoom, copyLink, cancel, leave, goHome, requestRestart,
       sendChat, fmtChatTime,
