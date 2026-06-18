@@ -176,30 +176,16 @@
     color: #93C5FD;
   }
 
-  /* 移动端聊天面板：棋盘下方内联区域（不挡住棋盘） */
+  /* 移动端聊天面板：和桌面版一样右侧抽屉（展开时锁定落子） */
   @media (max-width: 768px) {
     .chat-toggle {
       right: 12px;
       bottom: 16px;
       top: auto;
     }
-    .chat-panel {
-      display: none;
-      position: static;
-      width: auto;
-      max-width: none;
-      height: auto;
-      max-height: 50vh;
-      margin: 12px 8px 8px;
-      border-left: 1px solid #334155;
-      border-top: 1px solid #334155;
-      border-radius: 12px;
-      transform: none;
-      transition: none;
-      box-shadow: 0 2px 8px rgba(0,0,0,0.3);
-    }
-    .chat-panel.open { display: flex; transform: none; }
-    .chat-header { border-radius: 12px 12px 0 0; }
+    .chat-panel { border-radius: 0; }
+    .chat-header { border-radius: 0; }
+    .board.chat-locked { pointer-events: none; }
   }
 
   /* 状态卡 */
@@ -601,7 +587,7 @@
 
     <!-- 棋盘 -->
     <div class="card board-card">
-      <div ref="boardRef" class="board" @click="handleClick">
+      <div ref="boardRef" class="board" :class="{ 'chat-locked': chatOpen }" @click="handleClick">
         <svg class="board-svg" viewBox="0 0 600 600" preserveAspectRatio="xMidYMid meet">
           <g class="grid">
             <line v-for="i in 15" :key="'h'+i"
@@ -647,17 +633,7 @@
     </div>
   </div>
 
-  <div class="footer">
-    <a href="#" @click.prevent="goHome" v-if="mode!=='home'">← 返回主页</a>
-  </div>
-
-  <!-- 聊天侧边栏（仅双进入房后显示） -->
-  <button v-if="mode==='playing'" class="chat-toggle" @click="chatOpen = !chatOpen" :title="chatOpen ? '隐藏聊天' : '展开聊天'">
-    <span v-if="!chatOpen">💬</span>
-    <span v-else>✕</span>
-    <span v-if="chatUnread > 0 && !chatOpen" class="chat-badge">{{ chatUnread }}</span>
-  </button>
-
+  <!-- 聊天面板（手机版直接在落子记录下方；桌面版 fixed 定位不受 DOM 顺序影响） -->
   <div v-show="mode==='playing'" :class="['chat-panel', chatOpen ? 'open' : '']">
     <div class="chat-header">
       <span class="chat-title">💬 聊天</span>
@@ -676,6 +652,17 @@
       <button type="submit" class="chat-send" :disabled="!chatInput.trim() || mode!=='playing'">发送</button>
     </form>
   </div>
+
+  <div class="footer">
+    <a href="#" @click.prevent="goHome" v-if="mode!=='home'">← 返回主页</a>
+  </div>
+
+  <!-- 聊天切换按钮（桌面/手机右下角浮动） -->
+  <button v-if="mode==='playing'" class="chat-toggle" @click="chatOpen = !chatOpen" :title="chatOpen ? '隐藏聊天' : '展开聊天'">
+    <span v-if="!chatOpen">💬</span>
+    <span v-else>✕</span>
+    <span v-if="chatUnread > 0 && !chatOpen" class="chat-badge">{{ chatUnread }}</span>
+  </button>
 
   <!-- 弹窗 -->
   <div v-if="modal" class="modal" @click.self="modal=null">
