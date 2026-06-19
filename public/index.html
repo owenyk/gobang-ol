@@ -308,10 +308,16 @@
   .stone.black.winner { outline: 2px solid #FFD700; outline-offset: 1px; }
   .stone.white.winner { outline: 2px solid #FFD700; outline-offset: 1px; }
 
-  /* 音效开关 */
+  /* 音效开关（贴在棋盘左上角） */
+  .board-card { position: relative; }
   .sound-toggle {
+    position: absolute;
+    top: 8px;
+    left: 8px;
+    z-index: 10;
     display: inline-flex;
     align-items: center;
+    justify-content: center;
     gap: 6px;
     background: #1E293B;
     color: #CBD5E1;
@@ -634,6 +640,9 @@
 
     <!-- 棋盘 -->
     <div class="card board-card">
+      <button class="sound-toggle" @click="toggleSound" :title="soundOn ? '点击关闭音效' : '点击开启音效'">
+        <span class="ico">{{ soundOn ? '🔊' : '🔇' }}</span>
+      </button>
       <div ref="boardRef" class="board" :class="{ 'chat-locked': chatOpen }" @click="handleClick">
         <svg class="board-svg" viewBox="0 0 600 600" preserveAspectRatio="xMidYMid meet">
           <g class="grid">
@@ -701,10 +710,6 @@
   </div>
 
   <div class="footer">
-    <button class="sound-toggle" @click="toggleSound" :title="soundOn ? '点击关闭音效' : '点击开启音效'">
-      <span class="ico">{{ soundOn ? '🔊' : '🔇' }}</span>
-      <span>{{ soundOn ? '音效' : '已静音' }}</span>
-    </button>
     <a href="#" @click.prevent="goHome" v-if="mode!=='home'">← 返回主页</a>
   </div>
 
@@ -872,6 +877,7 @@ createApp({
           whiteTime.value     = msg.whiteTime;
           currentPlayer.value = msg.color;
           updateTickBase(msg.blackTime, msg.whiteTime);
+          playMoveSound();
           if (msg.gameOver) {
             gameOver.value = true;
             winner.value   = msg.winner;
@@ -1100,6 +1106,7 @@ createApp({
       const gy = Math.round((py - PAD) / CELL) + 1;
       if (gx < 1 || gx > 15 || gy < 1 || gy > 15) return;
       if (moves.value.some(m => m.x===gx && m.y===gy)) return;
+      playMoveSound();
       if (ws) ws.send(JSON.stringify({ type: 'move', x: gx, y: gy }));
     }
     function stoneStyle(s) {
