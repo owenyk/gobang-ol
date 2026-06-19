@@ -880,7 +880,8 @@ createApp({
           whiteTime.value     = msg.whiteTime;
           currentPlayer.value = msg.color;
           updateTickBase(msg.blackTime, msg.whiteTime);
-          playMoveSound();
+          // 只在对手落子时播放声音（自己落子时 handleClick 已播过，避免双重播放）
+          if (msg.player !== myColor.value) playMoveSound();
           if (msg.gameOver) {
             gameOver.value = true;
             winner.value   = msg.winner;
@@ -1047,11 +1048,23 @@ createApp({
     }
 
     function requestRestart() {
-      if (!ws) return;
-      if (mode.value !== 'gameover' && mode.value !== 'playing') return;
-      if (restartPending.value || restartIncoming.value) return;
+      console.log('[restart] click', {
+        mode: mode.value, hasWs: !!ws,
+        pending: restartPending.value, incoming: !!restartIncoming.value,
+        winner: winner.value, isDraw: isDraw.value
+      });
+      if (!ws) { console.log('[restart] blocked: no ws'); return; }
+      if (mode.value !== 'gameover' && mode.value !== 'playing') {
+        console.log('[restart] blocked: bad mode=' + mode.value);
+        return;
+      }
+      if (restartPending.value || restartIncoming.value) {
+        console.log('[restart] blocked: pending/incoming already set');
+        return;
+      }
       restartPending.value = true;
       ws.send(JSON.stringify({ type: 'restart-request' }));
+      console.log('[restart] sent');
     }
 
     function sendRestartResponse(accept) {
