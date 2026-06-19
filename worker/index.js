@@ -9,7 +9,9 @@
 //   { type: 'create', roomId, name }
 //   { type: 'join',   roomId, name }
 //   { type: 'move',   x, y }
-//   { type: 'restart' }
+//   { type: 'restart-request' }  // 任何一方发起请求
+//   { type: 'restart-accept' }   // 对方同意
+//   { type: 'restart-reject' }   // 对方拒绝
 //   { type: 'leave' }
 //
 // 服务端 → 客户端:
@@ -19,7 +21,9 @@
 //   { type: 'sync',             moves, currentPlayer, blackTime, whiteTime, gameOver, winner, winLine }
 //   { type: 'move',             x, y, player, color, blackTime, whiteTime, gameOver, winner, winLine }
 //   { type: 'tick',             blackTime, whiteTime }
-//   { type: 'restart',          currentPlayer }
+//   { type: 'restart-request',  from: 1|2, name }  // 通知对方面要重开
+//   { type: 'restart-accept',   currentPlayer: 1 }  // 双方开始新局
+//   { type: 'restart-reject',   name }              // 请求被拒
 //   { type: 'opponent_left',    name }
 //   { type: 'error',            message }
 
@@ -41,6 +45,7 @@ export class GobangRoom {
     this.winLine = null;
     this.restored = false;
     this.chatHistory = [];        // { sender: 1|2, name, text, time }（replay 不清）
+    this.pendingRestartFrom = 0;  // 有重开请求待回复时记录发起者 color，0=无
 
     // 启动时恢复 + 设置定时器
     state.blockConcurrencyWhile(async () => {
@@ -171,16 +176,33 @@ export class GobangRoom {
         break;
       }
 
-      case 'restart': {
-        // 只 host 能发起
-        if (!sess.isHost) {
-          this.send(ws, { type: 'error', message: '只有房主能申请重开' });
-          return;
-        }
+      case 'restart-request': {
+        // 任何一方都可发起。需在游戏中 + 对手在线 + 没有正在待回复的请求
+        if (sess.color === 0) return;
         if (this.sessions.size < 2) {
           this.send(ws, { type: 'error', message: '对手已离开，无法重开' });
           return;
         }
+        if (this.pendingRestartFrom !== 0) {
+          // 已有请求在流转（通常是双方同时点），忽略后到的
+          return;
+        }
+        this.pendingRestartFrom = sess.color;
+        // 通知所有对方玩家
+        for (const [otherWs, otherSess] of this.sessions) {
+          if (otherWs !== ws && otherSess.color !== 0) {
+            this.send(otherWs, { type: 'restart-request', from: sess.color, name: sess.name });
+          }
+        }
+        // 也回执给自己（用于 UI 高亮"等待中"）
+        this.send(ws, { type: 'restart-request', from: sess.color, name: sess.name });
+        break;
+      }
+
+      case 'restart-accept': {
+        if (this.pendingRestartFrom === 0) return;        // 没有待响应请求
+        if (sess.color === this.pendingRestartFrom) return; // 不能自己同意自己
+        // 重置棋盘
         this.board = Array.from({ length: 15 }, () => Array(15).fill(0));
         this.moves = [];
         this.currentPlayer = 1;
@@ -190,8 +212,22 @@ export class GobangRoom {
         this.gameOver = false;
         this.winner = 0;
         this.winLine = null;
-        this.broadcast({ type: 'restart', currentPlayer: 1 });
+        this.pendingRestartFrom = 0;
+        this.broadcast({ type: 'restart-accept', currentPlayer: 1 });
         await this.save();
+        break;
+      }
+
+      case 'restart-reject': {
+        if (this.pendingRestartFrom === 0) return;
+        if (sess.color === this.pendingRestartFrom) return; // 自己拒自己的请求无意义
+        // 仅回执给请求方
+        for (const [otherWs, otherSess] of this.sessions) {
+          if (otherSess.color === this.pendingRestartFrom) {
+            this.send(otherWs, { type: 'restart-reject', name: sess.name });
+          }
+        }
+        this.pendingRestartFrom = 0;
         break;
       }
 

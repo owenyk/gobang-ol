@@ -325,6 +325,19 @@
   .sound-toggle:hover { background: #334155; }
   .sound-toggle .ico { font-size: 15px; }
 
+  /* 重开协商 UI */
+  .restart-pending {
+    display: inline-block;
+    margin-left: 12px;
+    color: #FBBF24;
+    font-size: 13px;
+  }
+  .modal-actions {
+    margin-top: 8px;
+    display: flex;
+    justify-content: flex-end;
+  }
+
   .btn-row2 { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
   .btn-row2 .btn { margin-bottom: 0; }
 
@@ -596,7 +609,8 @@
         {{ winner
           ? (winner===myColor ? '🏆 你赢了！' : '💔 你输了 · ' + (winner===1?'黑方':'白方') + ' 获胜')
           : '🤝 平局' }}
-        <button class="btn btn-primary" style="margin-left:12px;" @click="requestRestart">再来一盘</button>
+        <button v-if="!restartPending" class="btn btn-primary" style="margin-left:12px;" @click="requestRestart">再来一盘</button>
+        <span v-else class="restart-pending">⏳ 已发起重开请求，等待对方同意…</span>
       </div>
       <div class="panes">
         <div class="player-pane" :class="{active: currentPlayer===1 && !finished}">
@@ -708,6 +722,18 @@
       <p>{{ modal.text }}</p>
       <button v-if="modal.action" class="btn btn-primary" @click="modal.action.fn">{{ modal.action.label }}</button>
       <button v-else class="btn btn-slate" @click="modal=null">关闭</button>
+    </div>
+  </div>
+
+  <!-- 重开请求确认弹窗 -->
+  <div v-if="restartIncoming" class="modal">
+    <div class="modal-card">
+      <h2>🔁 重开请求</h2>
+      <p>{{ restartIncoming.name }} 邀请你再来一盘，是否同意？</p>
+      <div class="modal-actions">
+        <button class="btn btn-slate" @click="sendRestartResponse(false)">拒绝</button>
+        <button class="btn btn-primary" style="margin-left:8px;" @click="sendRestartResponse(true)">同意</button>
+      </div>
     </div>
   </div>
 
@@ -864,16 +890,29 @@ createApp({
           whiteTime.value = msg.whiteTime;
           updateTickBase(msg.blackTime, msg.whiteTime);
           break;
-        case 'restart':
-          moves.value         = [];
-          currentPlayer.value = msg.currentPlayer;
-          blackTime.value     = 0;
-          whiteTime.value     = 0;
-          winner.value        = 0;
-          winLine.value       = null;
-          gameOver.value      = false;
-          updateTickBase(0, 0);
-          // 聊天记录保留
+        case 'restart-accept':
+          restartPending.value = false;
+          restartIncoming.value = null;
+          resetGame(msg.currentPlayer);
+          break;
+        case 'restart-reject':
+          if (restartPending.value) {
+            restartPending.value = false;
+            const n = msg.name || '对方';
+            showModal('被拒绝', n + ' 拒绝了重开请求');
+          }
+          break;
+        case 'restart-request':
+          // 只在游戏已结束时接收请求（避免混乱）。忽略自己广播的回执
+          if (msg.from === myColor.value) break;
+          if (restartPending.value) {
+            // 对方在我方发请求时也发了一个，按服务器规则后到被丢，这里主动接受
+            ws.send(JSON.stringify({ type: 'restart-accept' }));
+            resetGame(1);
+            restartPending.value = false;
+            break;
+          }
+          restartIncoming.value = { from: msg.from, name: msg.name || ('玩家' + msg.from) };
           break;
         case 'chat':
           chatMessages.value.push({
@@ -977,20 +1016,56 @@ createApp({
     // ===== 房主判断 =====
     const isHost = computed(() => myColor.value === 1);
 
+    // ===== 重开协商状态 =====
+    // restartPending: 我已发起请求，等待对方回应
+    // restartIncoming: 收到对方的重开请求（存 {from, name}，null 表示无）
+    // restartRequesterName: 反向，供 UI 提示用
+    const restartPending = ref(false);
+    const restartIncoming = ref(null);
+
+    function resetGame(currentPlayer) {
+      moves.value         = [];
+      currentPlayer.value = currentPlayer;
+      blackTime.value     = 0;
+      whiteTime.value     = 0;
+      winner.value        = 0;
+      winLine.value       = null;
+      gameOver.value      = false;
+      finished.value      = false;
+      isDraw.value        = false;
+      if (typeof updateTickBase === 'function') updateTickBase(0, 0);
+      // 聊天记录保留
+    }
+
+    function requestRestart() {
+      if (!ws) return;
+      if (mode.value !== 'gameover' && mode.value !== 'playing') return;
+      if (restartPending.value || restartIncoming.value) return;
+      restartPending.value = true;
+      ws.send(JSON.stringify({ type: 'restart-request' }));
+    }
+
+    function sendRestartResponse(accept) {
+      if (!ws) return;
+      const fromName = restartIncoming.value && restartIncoming.value.name;
+      restartIncoming.value = null;
+      ws.send(JSON.stringify({ type: accept ? 'restart-accept' : 'restart-reject' }));
+      if (!accept) {
+        showModal('已拒绝', '已拒绝' + (fromName ? ' ' + fromName : '') + ' 的重开请求');
+      }
+    }
+
+    function cancelRestartRequest() {
+      if (!ws || !restartPending.value) return;
+      restartPending.value = false;
+      // 服务端暂不支持 cancel。超时由下一次重连状态覆盖。
+    }
+
     // ===== 胜利棋子判断 =====
     function isWinnerStone(s) {
       if (!winLine.value) return false;
       for (const w of winLine.value) if (w.x === s.x && w.y === s.y) return true;
       return false;
-    }
-
-    function requestRestart() {
-      if (!ws) return;
-      if (!isHost.value) {
-        showModal('提示', '请等待房主发起"再来一盘"');
-        return;
-      }
-      ws.send(JSON.stringify({ type: 'restart' }));
     }
     function sendChat() {
       const text = chatInput.value.trim();
@@ -1063,6 +1138,8 @@ createApp({
       connStatus, connClass, modal, stars, boardRef, shareUrl, qrCodeUrl,
       chatOpen, chatMessages, chatInput, chatUnread, chatListRef,
       soundOn, isHost, isWinnerStone,
+      restartPending, restartIncoming,
+      requestRestart, sendRestartResponse, cancelRestartRequest,
       createRoom, joinRoom, copyLink, cancel, leave, goHome, requestRestart,
       sendChat, fmtChatTime, toggleSound,
       handleClick, stoneStyle, fmtTime
