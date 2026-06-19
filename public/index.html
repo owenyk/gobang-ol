@@ -955,6 +955,8 @@ createApp({
     }
 
     function createRoom() {
+      // 清除可能残留的旧 hash（#ABC123），避免 pushState 失效时显示成 /#ABC123
+      if (location.hash) history.pushState(null, '', location.pathname);
       roomId.value = genRoomId();
       connect(roomId.value, 'create');
     }
