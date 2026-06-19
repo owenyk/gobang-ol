@@ -292,6 +292,39 @@
   .stone.black { background: radial-gradient(circle at 35% 30%, #666 0%, #0A0A0A 85%); box-shadow: 1px 1px 2px rgba(0,0,0,0.6); }
   .stone.white { background: radial-gradient(circle at 35% 30%, #ffffff 0%, #C8C8C8 95%); box-shadow: 1px 1px 2px rgba(0,0,0,0.35); }
 
+  /* 胜方棋子的金色外圈闪耀 */
+  @keyframes win-shine {
+    0%, 100% {
+      box-shadow: 0 0 6px 2px rgba(255, 215, 0, 0.65), 0 0 14px 4px rgba(255, 215, 0, 0.35);
+    }
+    50% {
+      box-shadow: 0 0 16px 6px rgba(255, 215, 0, 1), 0 0 26px 10px rgba(255, 215, 0, 0.6);
+    }
+  }
+  .stone.winner {
+    z-index: 5;
+    animation: win-shine 1.2s ease-in-out infinite;
+  }
+  .stone.black.winner { outline: 2px solid #FFD700; outline-offset: 1px; }
+  .stone.white.winner { outline: 2px solid #FFD700; outline-offset: 1px; }
+
+  /* 音效开关 */
+  .sound-toggle {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    background: #1E293B;
+    color: #CBD5E1;
+    border: 1px solid #334155;
+    border-radius: 8px;
+    padding: 6px 12px;
+    font-size: 13px;
+    cursor: pointer;
+    user-select: none;
+  }
+  .sound-toggle:hover { background: #334155; }
+  .sound-toggle .ico { font-size: 15px; }
+
   .btn-row2 { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
   .btn-row2 .btn { margin-bottom: 0; }
 
@@ -608,7 +641,7 @@
           </g>
         </svg>
         <div v-for="(s,idx) in moves" :key="idx"
-             class="stone" :class="s.player===1?'black':'white'"
+             class="stone" :class="[s.player===1?'black':'white', isWinnerStone(s) ? 'winner' : '']"
              :style="stoneStyle(s)"></div>
       </div>
     </div>
@@ -654,6 +687,10 @@
   </div>
 
   <div class="footer">
+    <button class="sound-toggle" @click="toggleSound" :title="soundOn ? '点击关闭音效' : '点击开启音效'">
+      <span class="ico">{{ soundOn ? '🔊' : '🔇' }}</span>
+      <span>{{ soundOn ? '音效' : '已静音' }}</span>
+    </button>
     <a href="#" @click.prevent="goHome" v-if="mode!=='home'">← 返回主页</a>
   </div>
 
@@ -905,8 +942,54 @@ createApp({
       location.hash = '';
       setConn('');
     }
+    // ===== 音效（落子、清脆木声）=====
+    let audioCtx = null;
+    const soundOn = ref(localStorage.getItem('gobang_sound') !== '0');
+    function getAudioCtx() {
+      if (!audioCtx) {
+        try { audioCtx = new (window.AudioContext || window.webkitAudioContext)(); } catch (e) { audioCtx = null; }
+      }
+      return audioCtx;
+    }
+    function playMoveSound() {
+      if (!soundOn.value) return;
+      const ctx = getAudioCtx();
+      if (!ctx) return;
+      try {
+        const t = ctx.currentTime;
+        const osc = ctx.createOscillator();
+        const gain = ctx.createGain();
+        osc.type = 'triangle';
+        osc.frequency.setValueAtTime(880, t);
+        osc.frequency.exponentialRampToValueAtTime(440, t + 0.08);
+        gain.gain.setValueAtTime(0.18, t);
+        gain.gain.exponentialRampToValueAtTime(0.001, t + 0.1);
+        osc.connect(gain).connect(ctx.destination);
+        osc.start(t);
+        osc.stop(t + 0.12);
+      } catch (e) {}
+    }
+    function toggleSound() {
+      soundOn.value = !soundOn.value;
+      try { localStorage.setItem('gobang_sound', soundOn.value ? '1' : '0'); } catch (e) {}
+    }
+
+    // ===== 房主判断 =====
+    const isHost = computed(() => myColor.value === 1);
+
+    // ===== 胜利棋子判断 =====
+    function isWinnerStone(s) {
+      if (!winLine.value) return false;
+      for (const w of winLine.value) if (w.x === s.x && w.y === s.y) return true;
+      return false;
+    }
+
     function requestRestart() {
       if (!ws) return;
+      if (!isHost.value) {
+        showModal('提示', '请等待房主发起"再来一盘"');
+        return;
+      }
       ws.send(JSON.stringify({ type: 'restart' }));
     }
     function sendChat() {
@@ -979,8 +1062,9 @@ createApp({
       blackTime, whiteTime, winner, winLine, gameOver, finished, isDraw,
       connStatus, connClass, modal, stars, boardRef, shareUrl, qrCodeUrl,
       chatOpen, chatMessages, chatInput, chatUnread, chatListRef,
+      soundOn, isHost, isWinnerStone,
       createRoom, joinRoom, copyLink, cancel, leave, goHome, requestRestart,
-      sendChat, fmtChatTime,
+      sendChat, fmtChatTime, toggleSound,
       handleClick, stoneStyle, fmtTime
     };
   }
