@@ -907,7 +907,7 @@ createApp({
         case 'restart-accept':
           restartPending.value = false;
           restartIncoming.value = null;
-          resetGame(msg.currentPlayer);
+          resetGame();
           break;
         case 'restart-reject':
           if (restartPending.value) {
@@ -922,7 +922,7 @@ createApp({
           if (restartPending.value) {
             // 对方在我方发请求时也发了一个，按服务器规则后到被丢，这里主动接受
             ws.send(JSON.stringify({ type: 'restart-accept' }));
-            resetGame(1);
+            resetGame();
             restartPending.value = false;
             break;
           }
@@ -1039,9 +1039,11 @@ createApp({
     const restartPending = ref(false);
     const restartIncoming = ref(null);
 
-    function resetGame(currentPlayer) {
+    function resetGame() {
+      // 新一局固定黑方（1）先手，不接受 server 的 currentPlayer（避免上一局结束时的
+      // "下一个本应落子方"残留导致新一局从白方开局的 bug）
       moves.value         = [];
-      currentPlayer.value = currentPlayer;
+      currentPlayer.value = 1;
       blackTime.value     = 0;
       whiteTime.value     = 0;
       winner.value        = 0;
