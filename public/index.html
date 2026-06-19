@@ -308,12 +308,12 @@
   .stone.black.winner { outline: 2px solid #FFD700; outline-offset: 1px; }
   .stone.white.winner { outline: 2px solid #FFD700; outline-offset: 1px; }
 
-  /* 音效开关（贴在棋盘左上角） */
-  .board-card { position: relative; }
+  /* 音效开关（贴在状态卡右上角） */
+  .status-card { position: relative; }
   .sound-toggle {
     position: absolute;
-    top: 8px;
-    left: 8px;
+    top: 6px;
+    right: 6px;
     z-index: 10;
     display: inline-flex;
     align-items: center;
@@ -611,6 +611,9 @@
   <div v-else>
     <!-- 状态卡：双方计时器 -->
     <div class="card status-card">
+      <button class="sound-toggle" @click="toggleSound" :title="soundOn ? '点击关闭音效' : '点击开启音效'">
+        <span class="ico">{{ soundOn ? '🔊' : '🔇' }}</span>
+      </button>
       <div v-if="winner || isDraw" class="status-banner" :class="{draw: isDraw}">
         {{ winner
           ? (winner===myColor ? '🏆 你赢了！' : '💔 你输了 · ' + (winner===1?'黑方':'白方') + ' 获胜')
@@ -640,9 +643,6 @@
 
     <!-- 棋盘 -->
     <div class="card board-card">
-      <button class="sound-toggle" @click="toggleSound" :title="soundOn ? '点击关闭音效' : '点击开启音效'">
-        <span class="ico">{{ soundOn ? '🔊' : '🔇' }}</span>
-      </button>
       <div ref="boardRef" class="board" :class="{ 'chat-locked': chatOpen }" @click="handleClick">
         <svg class="board-svg" viewBox="0 0 600 600" preserveAspectRatio="xMidYMid meet">
           <g class="grid">
