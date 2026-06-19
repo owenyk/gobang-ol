@@ -797,7 +797,7 @@ createApp({
     const boardRef = ref(null);
     const finished = computed(() => !!winner.value || gameOver.value);
     const isDraw   = computed(() => !winner.value && gameOver.value && moves.value.length === 225);
-    const shareUrl = computed(() => location.origin + location.pathname + '#' + roomId.value);
+    const shareUrl = computed(() => location.origin + '/room/' + roomId.value);
     const qrCodeUrl = computed(() =>
       `https://api.qrserver.com/v1/create-qr-code/?size=240x240&margin=2&data=${encodeURIComponent(shareUrl.value)}`
     );
@@ -854,10 +854,12 @@ createApp({
         case 'created':
           myColor.value = msg.color;
           mode.value = 'waiting';
+          if (roomId.value) history.pushState(null, '', '/room/' + roomId.value);
           break;
         case 'joined':
           myColor.value = msg.color;
           mode.value = 'playing';
+          if (roomId.value) history.pushState(null, '', '/room/' + roomId.value);
           break;
         case 'opponent_joined':
           mode.value = 'playing';
@@ -988,7 +990,7 @@ createApp({
       chatInput.value = '';
       chatUnread.value = 0;
       chatOpen.value = false;
-      location.hash = '';
+      history.pushState(null, '', '/');
       setConn('');
     }
     // ===== 音效（落子、清脆木声）=====
@@ -1136,8 +1138,12 @@ createApp({
       };
     }
 
-    // 自动从 hash 加入
-    if (location.hash && location.hash.length === 7) {
+    // 自动从 URL 路径 /room/ABC123 加入（兼容旧 #ABC123 链接）
+    const pathRoom = location.pathname.match(/^\/room\/([A-Za-z0-9]{4,8})$/);
+    if (pathRoom) {
+      joinCode.value = pathRoom[1].toUpperCase();
+      setTimeout(() => joinRoom(), 100);
+    } else if (location.hash && location.hash.length === 7) {
       joinCode.value = location.hash.slice(1).toUpperCase();
       setTimeout(() => joinRoom(), 100);
     }
