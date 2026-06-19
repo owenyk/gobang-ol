@@ -1,1 +1,4 @@
+# 所有路径 fallback 到 index.html（SPA 路由支持 /room/ABC123）
+# Cache-Control: no-cache 防止 CDN 缓存旧版本，让 pushState 改写 URL 的修改立即生效
 /*    /index.html   200
+  Cache-Control: no-cache

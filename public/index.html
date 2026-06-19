@@ -854,11 +854,13 @@ createApp({
         case 'created':
           myColor.value = msg.color;
           mode.value = 'waiting';
+          console.log('[created] roomId=' + roomId.value + ' → pushState /room/' + roomId.value + ' · href=' + location.href);
           if (roomId.value) history.pushState(null, '', '/room/' + roomId.value);
           break;
         case 'joined':
           myColor.value = msg.color;
           mode.value = 'playing';
+          console.log('[joined] roomId=' + roomId.value + ' → pushState /room/' + roomId.value + ' · href=' + location.href);
           if (roomId.value) history.pushState(null, '', '/room/' + roomId.value);
           break;
         case 'opponent_joined':
