@@ -308,8 +308,8 @@
   .stone.black.winner { outline: 2px solid #FFD700; outline-offset: 1px; }
   .stone.white.winner { outline: 2px solid #FFD700; outline-offset: 1px; }
 
-  /* 音效开关（贴在状态卡右上角） */
-  .status-card { position: relative; }
+  /* 音效开关（贴在状态卡/房间卡右上角） */
+  .status-card, .room-info { position: relative; }
   .sound-toggle {
     position: absolute;
     top: 6px;
@@ -593,6 +593,9 @@
 
   <!-- 等待对方 -->
   <div v-else-if="mode==='waiting'" class="card room-info">
+    <button class="sound-toggle" @click="toggleSound" :title="soundOn ? '点击关闭音效' : '点击开启音效'">
+      <span class="ico">{{ soundOn ? '🔊' : '🔇' }}</span>
+    </button>
     <div class="hint">房间已创建，等待对手加入</div>
     <div class="room-code">{{ roomId }}</div>
     <div class="share-link">{{ shareUrl }}</div>
